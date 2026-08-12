@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NextGenLearners — Program Performance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#161b22;
+    --paper:#f6f4ee;
+    --panel:#ffffff;
+    --line:#dedad0;
+    --accent:#2f6f5e;
+    --accent-soft:#e4efe9;
+    --amber:#c07a2c;
+    --muted:#6b6558;
+    --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans: 'IBM Plex Sans', Arial, sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    padding:32px 40px 60px;
+  }
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:18px;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 6px;
+  }
+  h1{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:32px;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{
+    font-size:13px;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  .filter-block{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:6px;
+  }
+  .filter-label{
+    font-family:var(--mono);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+    color:var(--muted);
+  }
+  select{
+    font-family:var(--sans);
+    font-size:14px;
+    font-weight:500;
+    padding:9px 14px;
+    border:1.5px solid var(--ink);
+    background:var(--panel);
+    color:var(--ink);
+    border-radius:3px;
+    cursor:pointer;
+    min-width:220px;
+  }
+  select:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .funnel-row{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    margin-bottom:28px;
+  }
+  .funnel-card{
+    background:var(--panel);
+    padding:22px 24px;
+    position:relative;
+  }
+  .funnel-card .num{
+    font-family:var(--serif);
+    font-size:40px;
+    font-weight:600;
+    line-height:1;
+  }
+  .funnel-card .label{
+    font-family:var(--mono);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    margin-top:8px;
+  }
+  .funnel-card:nth-child(2) .num, .funnel-card:nth-child(3) .num{ color:var(--accent); }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+    margin-bottom:20px;
+  }
+  @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:20px 22px 22px;
+  }
+  .panel h2{
+    font-family:var(--serif);
+    font-size:17px;
+    font-weight:600;
+    margin:0 0 2px;
+  }
+  .panel .note{
+    font-size:12px;
+    color:var(--muted);
+    margin:0 0 16px;
+  }
+  .chart-wrap{ height:220px; position:relative; }
+
+  .lb-panel{ grid-column:1 / -1; }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13.5px;
+  }
+  thead th{
+    text-align:left;
+    font-family:var(--mono);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--muted);
+    border-bottom:1.5px solid var(--ink);
+    padding:8px 10px;
+  }
+  tbody td{
+    padding:9px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  tbody tr:hover{ background:var(--accent-soft); }
+  .rank{
+    font-family:var(--mono);
+    color:var(--muted);
+    width:32px;
+  }
+  .score-cell{
+    font-family:var(--mono);
+    font-weight:600;
+    color:var(--accent);
+  }
+  .domain-tag{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:11px;
+    padding:2px 8px;
+    border:1px solid var(--line);
+    border-radius:20px;
+    color:var(--muted);
+  }
+  .empty-note{
+    padding:20px;
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+  }
+  footer{
+    margin-top:30px;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--muted);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <p class="eyebrow">Program Performance · Week 3</p>
+    <h1>NextGenLearners Dashboard</h1>
+    <p class="subtitle">Applicants → interns → hackathon outcomes, by domain</p>
+  </div>
+  <div class="filter-block">
+    <label class="filter-label" for="domainFilter">Filter by domain</label>
+    <select id="domainFilter"></select>
+  </div>
+</header>
+
+<div class="funnel-row">
+  <div class="funnel-card">
+    <div class="num" id="fApplicants">–</div>
+    <div class="label">Total Applicants</div>
+  </div>
+  <div class="funnel-card">
+    <div class="num" id="fInterns">–</div>
+    <div class="label">Selected Interns</div>
+  </div>
+  <div class="funnel-card">
+    <div class="num" id="fCompleted">–</div>
+    <div class="label">Completed Program</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Conversion rate per domain</h2>
+    <p class="note">Applicants who reached "Completed" status</p>
+    <div class="chart-wrap"><canvas id="conversionChart"></canvas></div>
+  </div>
+  <div class="panel">
+    <h2>Average hackathon score per domain</h2>
+    <p class="note">Mean score among interns who reached the hackathon</p>
+    <div class="chart-wrap"><canvas id="scoreChart"></canvas></div>
+  </div>
+</div>
+
+<div class="panel lb-panel">
+  <h2>Leaderboard — top 10 performers</h2>
+  <p class="note">Highest hackathon scores in the current filter</p>
+  <table>
+    <thead>
+      <tr><th class="rank">#</th><th>Intern ID</th><th>Domain</th><th>Score</th></tr>
+    </thead>
+    <tbody id="leaderboardBody"></tbody>
+  </table>
+  <div class="empty-note" id="emptyNote" style="display:none;">No hackathon scores for this domain yet.</div>
+</div>
+
+<footer>NEXTGEN.DB · APPLICANTS (161) · INTERNS (65) · HACKATHON_SCORES (55) · MOCK DATA FOR DEMO PURPOSES</footer>
+
+<script>
+const DATA = {"applicants": [{"applicant_id": 1, "name": "Applicant_1", "domain": "Data Analytics", "university": "NED University", "application_date": "2025-01-07", "status": "Rejected"}, {"applicant_id": 2, "name": "Applicant_2", "domain": "Data Analytics", "university": "University of Karachi", "application_date": "2025-02-27", "status": "Selected"}, {"applicant_id": 3, "name": "Applicant_3", "domain": "Data Analytics", "university": "IBA Karachi", "application_date": "2025-06-23", "status": "Rejected"}, {"applicant_id": 4, "name": "Applicant_4", "domain": "Data Analytics", "university": "University of Karachi", "application_date": "2025-01-23", "status": "Rejected"}, {"applicant_id": 5, "name": "Applicant_5", "domain": "Data Analytics", "university": "NED University", "application_date": "2025-01-08", "status": "Selected"}, {"applicant_id": 6, "name": "Applicant_6", "domain": "Data Analytics", "university": "IBA Karachi", "application_date": "2025-05-10", "status": "Rejected"}, {"applicant_id": 7, "name": "Applicant_7", "domain": "Data Analytics", "university": "Habib University", "application_date": "2025-02-20", "status": "Rejected"}, {"applicant_id": 8, "name": "Applicant_8", "domain": "Data Analytics", "university": "FAST-NUCES", "application_date": "2025-05-20", "status": "Rejected"}, {"applicant_id": 9, "name": "Applicant_9", "domain": "Data Analytics", "university": "Bahria University", "application_date": "2025-05-31", "status": "Selected"}, {"applicant_id": 10, "name": "Applicant_10", "domain": "Data Analytics", "university": "NED University", "application_date": "2025-01-02", "status": "Rejected"}, {"applicant_id": 11, "name": "Applicant_11", "domain": "Data Analytics", "university": "LUMS", "application_date": "2025-06-28", "status": "Rejected"}, {"applicant_id": 12, "name": "Applicant_12", "domain": "Data Analytics", "university": "Bahria University", "application_date": "2025-02-09", "status": "Selected"}, {"applicant_id": 13, "name": "Applicant_13", "domain": "Data Analytics", "university": "FAST-NUCES", "application_date": "2025-03-28", "status": "Selected"}, {"applicant_id": 14, "name": "Applicant_14", "domain": "Data Analytics", "university": "LUMS", "application_date": "2025-01-25", "status": "Rejected"}, {"applicant_id": 15, "name": "Applicant_15", "domain": "Data Analytics", "university": "University of Karachi", "application_date": "2025-06-04", "status": "Selected"}, {"applicant_id": 16, "name": "Applicant_16", "domain": "Data Analytics", "university": "University of Karachi", "application_date": "2025-07-06", "status": "Rejected"}, {"applicant_id": 17, "name": "Applicant_17", "domain": "Data Analytics", "university": "LUMS", "application_date": "2025-04-07", "status": "Selected"}, {"applicant_id": 18, "name": "Applicant_18", "domain": "Data Analytics", "university": "Bahria University", "application_date": "2025-06-10", "status": "Rejected"}, {"applicant_id": 19, "name": "Applicant_19", "domain": "Data Analytics", "university": "Habib University", "application_date": "2025-04-03", "status": "Rejected"}, {"applicant_id": 20, "name": "Applicant_20", "domain": "Data Analytics", "university": "NED University", "application_date": "2025-01-18", "status": "Selected"}, {"applicant_id": 21, "name": "Applicant_21", "domain": "Data Analytics", "university": "University of Karachi", "application_date": "2025-07-17", "status": "Selected"}, {"applicant_id": 22, "name": "Applicant_22", "domain": "Data Analytics", "university": "FAST-NUCES", "application_date": "2025-03-01", "status": "Rejected"}, {"applicant_id": 23, "name": "Applicant_23", "domain": "Data Analytics", "university": "Bahria University", "application_date": "2025-03-13", "status": "Rejected"}, {"applicant_id": 24, "name": "Applicant_24", "domain": "Data Analytics", "university": "LUMS", "application_date": "2025-04-04", "status": "Selected"}, {"applicant_id": 25, "name": "Applicant_25", "domain": "Data Analytics", "university": "Habib University", "application_date": "2025-02-23", "status": "Rejected"}, {"applicant_id": 26, "name": "Applicant_26", "domain": "Data Analytics", "university": "IBA Karachi", "application_date": "2025-06-24", "status": "Rejected"}, {"applicant_id": 27, "name": "Applicant_27", "domain": "Data Analytics", "university": "Habib University", "application_date": "2025-06-12", "status": "Selected"}, {"applicant_id": 28, "name": "Applicant_28", "domain": "Data Analytics", "university": "FAST-NUCES", "application_date": "2025-03-04", "status": "Selected"}, {"applicant_id": 29, "name": "Applicant_29", "domain": "Web Development", "university": "NED University", "application_date": "2025-06-13", "status": "Rejected"}, {"applicant_id": 30, "name": "Applicant_30", "domain": "Web Development", "university": "Bahria University", "application_date": "2025-06-25", "status": "Selected"}, {"applicant_id": 31, "name": "Applicant_31", "domain": "Web Development", "university": "Bahria University", "application_date": "2025-07-18", "status": "Selected"}, {"applicant_id": 32, "name": "Applicant_32", "domain": "Web Development", "university": "FAST-NUCES", "application_date": "2025-01-09", "status": "Rejected"}, {"applicant_id": 33, "name": "Applicant_33", "domain": "Web Development", "university": "IBA Karachi", "application_date": "2025-03-10", "status": "Selected"}, {"applicant_id": 34, "name": "Applicant_34", "domain": "Web Development", "university": "Habib University", "application_date": "2025-07-03", "status": "Selected"}, {"applicant_id": 35, "name": "Applicant_35", "domain": "Web Development", "university": "Habib University", "application_date": "2025-05-08", "status": "Rejected"}, {"applicant_id": 36, "name": "Applicant_36", "domain": "Web Development", "university": "NED University", "application_date": "2025-04-28", "status": "Selected"}, {"applicant_id": 37, "name": "Applicant_37", "domain": "Web Development", "university": "IBA Karachi", "application_date": "2025-03-05", "status": "Rejected"}, {"applicant_id": 38, "name": "Applicant_38", "domain": "Web Development", "university": "FAST-NUCES", "application_date": "2025-03-09", "status": "Rejected"}, {"applicant_id": 39, "name": "Applicant_39", "domain": "Web Development", "university": "NED University", "application_date": "2025-05-30", "status": "Rejected"}, {"applicant_id": 40, "name": "Applicant_40", "domain": "Web Development", "university": "University of Karachi", "application_date": "2025-02-05", "status": "Rejected"}, {"applicant_id": 41, "name": "Applicant_41", "domain": "Web Development", "university": "University of Karachi", "application_date": "2025-07-13", "status": "Selected"}, {"applicant_id": 42, "name": "Applicant_42", "domain": "Web Development", "university": "Bahria University", "application_date": "2025-02-09", "status": "Rejected"}, {"applicant_id": 43, "name": "Applicant_43", "domain": "Web Development", "university": "University of Karachi", "application_date": "2025-06-24", "status": "Rejected"}, {"applicant_id": 44, "name": "Applicant_44", "domain": "Web Development", "university": "FAST-NUCES", "application_date": "2025-04-09", "status": "Rejected"}, {"applicant_id": 45, "name": "Applicant_45", "domain": "Web Development", "university": "IBA Karachi", "application_date": "2025-05-16", "status": "Selected"}, {"applicant_id": 46, "name": "Applicant_46", "domain": "Web Development", "university": "University of Karachi", "application_date": "2025-01-03", "status": "Rejected"}, {"applicant_id": 47, "name": "Applicant_47", "domain": "Web Development", "university": "Bahria University", "application_date": "2025-06-24", "status": "Rejected"}, {"applicant_id": 48, "name": "Applicant_48", "domain": "Web Development", "university": "LUMS", "application_date": "2025-03-10", "status": "Rejected"}, {"applicant_id": 49, "name": "Applicant_49", "domain": "Web Development", "university": "NED University", "application_date": "2025-01-29", "status": "Selected"}, {"applicant_id": 50, "name": "Applicant_50", "domain": "Web Development", "university": "Habib University", "application_date": "2025-04-27", "status": "Selected"}, {"applicant_id": 51, "name": "Applicant_51", "domain": "Web Development", "university": "IBA Karachi", "application_date": "2025-07-04", "status": "Selected"}, {"applicant_id": 52, "name": "Applicant_52", "domain": "Web Development", "university": "University of Karachi", "application_date": "2025-07-15", "status": "Selected"}, {"applicant_id": 53, "name": "Applicant_53", "domain": "Web Development", "university": "Habib University", "application_date": "2025-06-10", "status": "Selected"}, {"applicant_id": 54, "name": "Applicant_54", "domain": "Web Development", "university": "NED University", "application_date": "2025-05-10", "status": "Rejected"}, {"applicant_id": 55, "name": "Applicant_55", "domain": "Web Development", "university": "IBA Karachi", "application_date": "2025-04-06", "status": "Rejected"}, {"applicant_id": 56, "name": "Applicant_56", "domain": "Web Development", "university": "University of Karachi", "application_date": "2025-07-19", "status": "Under Review"}, {"applicant_id": 57, "name": "Applicant_57", "domain": "Web Development", "university": "University of Karachi", "application_date": "2025-06-03", "status": "Selected"}, {"applicant_id": 58, "name": "Applicant_58", "domain": "Web Development", "university": "Bahria University", "application_date": "2025-01-29", "status": "Under Review"}, {"applicant_id": 59, "name": "Applicant_59", "domain": "Web Development", "university": "NED University", "application_date": "2025-03-20", "status": "Selected"}, {"applicant_id": 60, "name": "Applicant_60", "domain": "Web Development", "university": "University of Karachi", "application_date": "2025-05-26", "status": "Under Review"}, {"applicant_id": 61, "name": "Applicant_61", "domain": "Web Development", "university": "University of Karachi", "application_date": "2025-07-07", "status": "Rejected"}, {"applicant_id": 62, "name": "Applicant_62", "domain": "UI/UX Design", "university": "IBA Karachi", "application_date": "2025-02-02", "status": "Rejected"}, {"applicant_id": 63, "name": "Applicant_63", "domain": "UI/UX Design", "university": "Bahria University", "application_date": "2025-02-12", "status": "Selected"}, {"applicant_id": 64, "name": "Applicant_64", "domain": "UI/UX Design", "university": "NED University", "application_date": "2025-06-05", "status": "Rejected"}, {"applicant_id": 65, "name": "Applicant_65", "domain": "UI/UX Design", "university": "Habib University", "application_date": "2025-05-19", "status": "Rejected"}, {"applicant_id": 66, "name": "Applicant_66", "domain": "UI/UX Design", "university": "FAST-NUCES", "application_date": "2025-02-21", "status": "Rejected"}, {"applicant_id": 67, "name": "Applicant_67", "domain": "UI/UX Design", "university": "FAST-NUCES", "application_date": "2025-06-21", "status": "Rejected"}, {"applicant_id": 68, "name": "Applicant_68", "domain": "UI/UX Design", "university": "NED University", "application_date": "2025-05-13", "status": "Rejected"}, {"applicant_id": 69, "name": "Applicant_69", "domain": "UI/UX Design", "university": "University of Karachi", "application_date": "2025-02-27", "status": "Selected"}, {"applicant_id": 70, "name": "Applicant_70", "domain": "UI/UX Design", "university": "IBA Karachi", "application_date": "2025-05-31", "status": "Rejected"}, {"applicant_id": 71, "name": "Applicant_71", "domain": "UI/UX Design", "university": "Habib University", "application_date": "2025-02-26", "status": "Selected"}, {"applicant_id": 72, "name": "Applicant_72", "domain": "UI/UX Design", "university": "University of Karachi", "application_date": "2025-06-11", "status": "Selected"}, {"applicant_id": 73, "name": "Applicant_73", "domain": "UI/UX Design", "university": "University of Karachi", "application_date": "2025-01-09", "status": "Rejected"}, {"applicant_id": 74, "name": "Applicant_74", "domain": "UI/UX Design", "university": "Habib University", "application_date": "2025-05-12", "status": "Selected"}, {"applicant_id": 75, "name": "Applicant_75", "domain": "UI/UX Design", "university": "NED University", "application_date": "2025-05-05", "status": "Selected"}, {"applicant_id": 76, "name": "Applicant_76", "domain": "UI/UX Design", "university": "IBA Karachi", "application_date": "2025-07-05", "status": "Under Review"}, {"applicant_id": 77, "name": "Applicant_77", "domain": "UI/UX Design", "university": "Bahria University", "application_date": "2025-05-28", "status": "Rejected"}, {"applicant_id": 78, "name": "Applicant_78", "domain": "UI/UX Design", "university": "NED University", "application_date": "2025-05-02", "status": "Rejected"}, {"applicant_id": 79, "name": "Applicant_79", "domain": "UI/UX Design", "university": "FAST-NUCES", "application_date": "2025-01-25", "status": "Selected"}, {"applicant_id": 80, "name": "Applicant_80", "domain": "UI/UX Design", "university": "FAST-NUCES", "application_date": "2025-04-01", "status": "Rejected"}, {"applicant_id": 81, "name": "Applicant_81", "domain": "UI/UX Design", "university": "Habib University", "application_date": "2025-07-06", "status": "Selected"}, {"applicant_id": 82, "name": "Applicant_82", "domain": "UI/UX Design", "university": "FAST-NUCES", "application_date": "2025-06-15", "status": "Selected"}, {"applicant_id": 83, "name": "Applicant_83", "domain": "UI/UX Design", "university": "Bahria University", "application_date": "2025-07-06", "status": "Selected"}, {"applicant_id": 84, "name": "Applicant_84", "domain": "UI/UX Design", "university": "NED University", "application_date": "2025-01-28", "status": "Selected"}, {"applicant_id": 85, "name": "Applicant_85", "domain": "UI/UX Design", "university": "FAST-NUCES", "application_date": "2025-05-18", "status": "Rejected"}, {"applicant_id": 86, "name": "Applicant_86", "domain": "UI/UX Design", "university": "NED University", "application_date": "2025-02-16", "status": "Selected"}, {"applicant_id": 87, "name": "Applicant_87", "domain": "UI/UX Design", "university": "Bahria University", "application_date": "2025-01-20", "status": "Rejected"}, {"applicant_id": 88, "name": "Applicant_88", "domain": "UI/UX Design", "university": "Habib University", "application_date": "2025-05-21", "status": "Selected"}, {"applicant_id": 89, "name": "Applicant_89", "domain": "UI/UX Design", "university": "University of Karachi", "application_date": "2025-05-19", "status": "Rejected"}, {"applicant_id": 90, "name": "Applicant_90", "domain": "UI/UX Design", "university": "NED University", "application_date": "2025-07-12", "status": "Rejected"}, {"applicant_id": 91, "name": "Applicant_91", "domain": "Digital Marketing", "university": "Bahria University", "application_date": "2025-05-05", "status": "Rejected"}, {"applicant_id": 92, "name": "Applicant_92", "domain": "Digital Marketing", "university": "NED University", "application_date": "2025-04-13", "status": "Under Review"}, {"applicant_id": 93, "name": "Applicant_93", "domain": "Digital Marketing", "university": "FAST-NUCES", "application_date": "2025-04-08", "status": "Selected"}, {"applicant_id": 94, "name": "Applicant_94", "domain": "Digital Marketing", "university": "Bahria University", "application_date": "2025-03-09", "status": "Under Review"}, {"applicant_id": 95, "name": "Applicant_95", "domain": "Digital Marketing", "university": "Habib University", "application_date": "2025-04-27", "status": "Selected"}, {"applicant_id": 96, "name": "Applicant_96", "domain": "Digital Marketing", "university": "IBA Karachi", "application_date": "2025-07-07", "status": "Under Review"}, {"applicant_id": 97, "name": "Applicant_97", "domain": "Digital Marketing", "university": "NED University", "application_date": "2025-06-19", "status": "Rejected"}, {"applicant_id": 98, "name": "Applicant_98", "domain": "Digital Marketing", "university": "University of Karachi", "application_date": "2025-02-18", "status": "Selected"}, {"applicant_id": 99, "name": "Applicant_99", "domain": "Digital Marketing", "university": "University of Karachi", "application_date": "2025-05-29", "status": "Rejected"}, {"applicant_id": 100, "name": "Applicant_100", "domain": "Digital Marketing", "university": "University of Karachi", "application_date": "2025-07-11", "status": "Selected"}, {"applicant_id": 101, "name": "Applicant_101", "domain": "Digital Marketing", "university": "Bahria University", "application_date": "2025-05-30", "status": "Rejected"}, {"applicant_id": 102, "name": "Applicant_102", "domain": "Digital Marketing", "university": "IBA Karachi", "application_date": "2025-05-16", "status": "Selected"}, {"applicant_id": 103, "name": "Applicant_103", "domain": "Digital Marketing", "university": "University of Karachi", "application_date": "2025-01-21", "status": "Rejected"}, {"applicant_id": 104, "name": "Applicant_104", "domain": "Digital Marketing", "university": "Bahria University", "application_date": "2025-06-02", "status": "Selected"}, {"applicant_id": 105, "name": "Applicant_105", "domain": "Digital Marketing", "university": "IBA Karachi", "application_date": "2025-03-02", "status": "Rejected"}, {"applicant_id": 106, "name": "Applicant_106", "domain": "Digital Marketing", "university": "University of Karachi", "application_date": "2025-03-05", "status": "Rejected"}, {"applicant_id": 107, "name": "Applicant_107", "domain": "Digital Marketing", "university": "Habib University", "application_date": "2025-06-08", "status": "Selected"}, {"applicant_id": 108, "name": "Applicant_108", "domain": "Digital Marketing", "university": "LUMS", "application_date": "2025-05-30", "status": "Rejected"}, {"applicant_id": 109, "name": "Applicant_109", "domain": "Digital Marketing", "university": "Habib University", "application_date": "2025-03-08", "status": "Selected"}, {"applicant_id": 110, "name": "Applicant_110", "domain": "Digital Marketing", "university": "FAST-NUCES", "application_date": "2025-03-22", "status": "Selected"}, {"applicant_id": 111, "name": "Applicant_111", "domain": "Digital Marketing", "university": "LUMS", "application_date": "2025-02-03", "status": "Rejected"}, {"applicant_id": 112, "name": "Applicant_112", "domain": "Digital Marketing", "university": "Bahria University", "application_date": "2025-04-28", "status": "Selected"}, {"applicant_id": 113, "name": "Applicant_113", "domain": "Digital Marketing", "university": "IBA Karachi", "application_date": "2025-01-19", "status": "Selected"}, {"applicant_id": 114, "name": "Applicant_114", "domain": "Digital Marketing", "university": "University of Karachi", "application_date": "2025-05-25", "status": "Under Review"}, {"applicant_id": 115, "name": "Applicant_115", "domain": "Digital Marketing", "university": "LUMS", "application_date": "2025-05-18", "status": "Selected"}, {"applicant_id": 116, "name": "Applicant_116", "domain": "Digital Marketing", "university": "University of Karachi", "application_date": "2025-02-03", "status": "Under Review"}, {"applicant_id": 117, "name": "Applicant_117", "domain": "Digital Marketing", "university": "NED University", "application_date": "2025-03-04", "status": "Rejected"}, {"applicant_id": 118, "name": "Applicant_118", "domain": "Digital Marketing", "university": "Habib University", "application_date": "2025-04-23", "status": "Rejected"}, {"applicant_id": 119, "name": "Applicant_119", "domain": "Digital Marketing", "university": "Bahria University", "application_date": "2025-03-19", "status": "Rejected"}, {"applicant_id": 120, "name": "Applicant_120", "domain": "Digital Marketing", "university": "Habib University", "application_date": "2025-06-17", "status": "Rejected"}, {"applicant_id": 121, "name": "Applicant_121", "domain": "Digital Marketing", "university": "Habib University", "application_date": "2025-05-22", "status": "Selected"}, {"applicant_id": 122, "name": "Applicant_122", "domain": "Digital Marketing", "university": "NED University", "application_date": "2025-01-27", "status": "Under Review"}, {"applicant_id": 123, "name": "Applicant_123", "domain": "Digital Marketing", "university": "University of Karachi", "application_date": "2025-03-09", "status": "Selected"}, {"applicant_id": 124, "name": "Applicant_124", "domain": "Digital Marketing", "university": "LUMS", "application_date": "2025-07-10", "status": "Rejected"}, {"applicant_id": 125, "name": "Applicant_125", "domain": "Digital Marketing", "university": "Habib University", "application_date": "2025-03-14", "status": "Rejected"}, {"applicant_id": 126, "name": "Applicant_126", "domain": "Digital Marketing", "university": "Habib University", "application_date": "2025-03-29", "status": "Selected"}, {"applicant_id": 127, "name": "Applicant_127", "domain": "Digital Marketing", "university": "LUMS", "application_date": "2025-03-09", "status": "Rejected"}, {"applicant_id": 128, "name": "Applicant_128", "domain": "Digital Marketing", "university": "FAST-NUCES", "application_date": "2025-01-14", "status": "Selected"}, {"applicant_id": 129, "name": "Applicant_129", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-01-12", "status": "Selected"}, {"applicant_id": 130, "name": "Applicant_130", "domain": "AI/ML", "university": "LUMS", "application_date": "2025-02-03", "status": "Rejected"}, {"applicant_id": 131, "name": "Applicant_131", "domain": "AI/ML", "university": "IBA Karachi", "application_date": "2025-02-11", "status": "Rejected"}, {"applicant_id": 132, "name": "Applicant_132", "domain": "AI/ML", "university": "University of Karachi", "application_date": "2025-06-30", "status": "Rejected"}, {"applicant_id": 133, "name": "Applicant_133", "domain": "AI/ML", "university": "Habib University", "application_date": "2025-01-29", "status": "Selected"}, {"applicant_id": 134, "name": "Applicant_134", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-02-08", "status": "Rejected"}, {"applicant_id": 135, "name": "Applicant_135", "domain": "AI/ML", "university": "NED University", "application_date": "2025-04-05", "status": "Rejected"}, {"applicant_id": 136, "name": "Applicant_136", "domain": "AI/ML", "university": "LUMS", "application_date": "2025-04-21", "status": "Selected"}, {"applicant_id": 137, "name": "Applicant_137", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-04-04", "status": "Rejected"}, {"applicant_id": 138, "name": "Applicant_138", "domain": "AI/ML", "university": "NED University", "application_date": "2025-01-11", "status": "Rejected"}, {"applicant_id": 139, "name": "Applicant_139", "domain": "AI/ML", "university": "University of Karachi", "application_date": "2025-06-24", "status": "Selected"}, {"applicant_id": 140, "name": "Applicant_140", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-04-01", "status": "Rejected"}, {"applicant_id": 141, "name": "Applicant_141", "domain": "AI/ML", "university": "Habib University", "application_date": "2025-04-15", "status": "Under Review"}, {"applicant_id": 142, "name": "Applicant_142", "domain": "AI/ML", "university": "NED University", "application_date": "2025-02-09", "status": "Under Review"}, {"applicant_id": 143, "name": "Applicant_143", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-02-11", "status": "Under Review"}, {"applicant_id": 144, "name": "Applicant_144", "domain": "AI/ML", "university": "University of Karachi", "application_date": "2025-02-15", "status": "Rejected"}, {"applicant_id": 145, "name": "Applicant_145", "domain": "AI/ML", "university": "LUMS", "application_date": "2025-02-15", "status": "Rejected"}, {"applicant_id": 146, "name": "Applicant_146", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-07-20", "status": "Under Review"}, {"applicant_id": 147, "name": "Applicant_147", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-06-21", "status": "Rejected"}, {"applicant_id": 148, "name": "Applicant_148", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-03-05", "status": "Selected"}, {"applicant_id": 149, "name": "Applicant_149", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-06-29", "status": "Selected"}, {"applicant_id": 150, "name": "Applicant_150", "domain": "AI/ML", "university": "NED University", "application_date": "2025-01-10", "status": "Rejected"}, {"applicant_id": 151, "name": "Applicant_151", "domain": "AI/ML", "university": "FAST-NUCES", "application_date": "2025-02-21", "status": "Rejected"}, {"applicant_id": 152, "name": "Applicant_152", "domain": "AI/ML", "university": "Bahria University", "application_date": "2025-03-31", "status": "Selected"}, {"applicant_id": 153, "name": "Applicant_153", "domain": "AI/ML", "university": "Habib University", "application_date": "2025-02-28", "status": "Selected"}, {"applicant_id": 154, "name": "Applicant_154", "domain": "AI/ML", "university": "LUMS", "application_date": "2025-02-19", "status": "Rejected"}, {"applicant_id": 155, "name": "Applicant_155", "domain": "AI/ML", "university": "LUMS", "application_date": "2025-01-18", "status": "Under Review"}, {"applicant_id": 156, "name": "Applicant_156", "domain": "AI/ML", "university": "FAST-NUCES", "application_date": "2025-03-31", "status": "Rejected"}, {"applicant_id": 157, "name": "Applicant_157", "domain": "AI/ML", "university": "IBA Karachi", "application_date": "2025-06-23", "status": "Under Review"}, {"applicant_id": 158, "name": "Applicant_158", "domain": "AI/ML", "university": "University of Karachi", "application_date": "2025-03-26", "status": "Under Review"}, {"applicant_id": 159, "name": "Applicant_159", "domain": "AI/ML", "university": "LUMS", "application_date": "2025-03-08", "status": "Selected"}, {"applicant_id": 160, "name": "Applicant_160", "domain": "AI/ML", "university": "FAST-NUCES", "application_date": "2025-01-10", "status": "Selected"}, {"applicant_id": 161, "name": "Applicant_161", "domain": "AI/ML", "university": "LUMS", "application_date": "2025-03-30", "status": "Rejected"}], "interns": [{"intern_id": 1, "applicant_id": 2, "domain": "Data Analytics", "start_date": "2025-03-22", "completion_status": "Completed"}, {"intern_id": 2, "applicant_id": 5, "domain": "Data Analytics", "start_date": "2025-02-03", "completion_status": "Completed"}, {"intern_id": 3, "applicant_id": 9, "domain": "Data Analytics", "start_date": "2025-06-28", "completion_status": "Completed"}, {"intern_id": 4, "applicant_id": 12, "domain": "Data Analytics", "start_date": "2025-02-20", "completion_status": "Completed"}, {"intern_id": 5, "applicant_id": 13, "domain": "Data Analytics", "start_date": "2025-04-07", "completion_status": "Completed"}, {"intern_id": 6, "applicant_id": 15, "domain": "Data Analytics", "start_date": "2025-07-01", "completion_status": "Completed"}, {"intern_id": 7, "applicant_id": 17, "domain": "Data Analytics", "start_date": "2025-04-23", "completion_status": "Completed"}, {"intern_id": 8, "applicant_id": 20, "domain": "Data Analytics", "start_date": "2025-01-30", "completion_status": "Dropped Out"}, {"intern_id": 9, "applicant_id": 21, "domain": "Data Analytics", "start_date": "2025-08-06", "completion_status": "Completed"}, {"intern_id": 10, "applicant_id": 24, "domain": "Data Analytics", "start_date": "2025-04-17", "completion_status": "Completed"}, {"intern_id": 11, "applicant_id": 27, "domain": "Data Analytics", "start_date": "2025-07-01", "completion_status": "Completed"}, {"intern_id": 12, "applicant_id": 28, "domain": "Data Analytics", "start_date": "2025-03-27", "completion_status": "Completed"}, {"intern_id": 13, "applicant_id": 30, "domain": "Web Development", "start_date": "2025-07-14", "completion_status": "Completed"}, {"intern_id": 14, "applicant_id": 31, "domain": "Web Development", "start_date": "2025-08-03", "completion_status": "Completed"}, {"intern_id": 15, "applicant_id": 33, "domain": "Web Development", "start_date": "2025-04-01", "completion_status": "Completed"}, {"intern_id": 16, "applicant_id": 34, "domain": "Web Development", "start_date": "2025-07-18", "completion_status": "Completed"}, {"intern_id": 17, "applicant_id": 36, "domain": "Web Development", "start_date": "2025-05-17", "completion_status": "Completed"}, {"intern_id": 18, "applicant_id": 41, "domain": "Web Development", "start_date": "2025-07-23", "completion_status": "Completed"}, {"intern_id": 19, "applicant_id": 45, "domain": "Web Development", "start_date": "2025-06-01", "completion_status": "Completed"}, {"intern_id": 20, "applicant_id": 49, "domain": "Web Development", "start_date": "2025-02-26", "completion_status": "Completed"}, {"intern_id": 21, "applicant_id": 50, "domain": "Web Development", "start_date": "2025-05-17", "completion_status": "Completed"}, {"intern_id": 22, "applicant_id": 51, "domain": "Web Development", "start_date": "2025-07-28", "completion_status": "Completed"}, {"intern_id": 23, "applicant_id": 52, "domain": "Web Development", "start_date": "2025-08-10", "completion_status": "Completed"}, {"intern_id": 24, "applicant_id": 53, "domain": "Web Development", "start_date": "2025-06-25", "completion_status": "Completed"}, {"intern_id": 25, "applicant_id": 57, "domain": "Web Development", "start_date": "2025-06-22", "completion_status": "Completed"}, {"intern_id": 26, "applicant_id": 59, "domain": "Web Development", "start_date": "2025-04-19", "completion_status": "Completed"}, {"intern_id": 27, "applicant_id": 63, "domain": "UI/UX Design", "start_date": "2025-02-24", "completion_status": "Dropped Out"}, {"intern_id": 28, "applicant_id": 69, "domain": "UI/UX Design", "start_date": "2025-03-16", "completion_status": "Completed"}, {"intern_id": 29, "applicant_id": 71, "domain": "UI/UX Design", "start_date": "2025-03-15", "completion_status": "Dropped Out"}, {"intern_id": 30, "applicant_id": 72, "domain": "UI/UX Design", "start_date": "2025-06-25", "completion_status": "Completed"}, {"intern_id": 31, "applicant_id": 74, "domain": "UI/UX Design", "start_date": "2025-05-29", "completion_status": "Dropped Out"}, {"intern_id": 32, "applicant_id": 75, "domain": "UI/UX Design", "start_date": "2025-06-03", "completion_status": "Dropped Out"}, {"intern_id": 33, "applicant_id": 79, "domain": "UI/UX Design", "start_date": "2025-02-06", "completion_status": "Completed"}, {"intern_id": 34, "applicant_id": 81, "domain": "UI/UX Design", "start_date": "2025-08-05", "completion_status": "Completed"}, {"intern_id": 35, "applicant_id": 82, "domain": "UI/UX Design", "start_date": "2025-07-07", "completion_status": "Completed"}, {"intern_id": 36, "applicant_id": 83, "domain": "UI/UX Design", "start_date": "2025-07-23", "completion_status": "Completed"}, {"intern_id": 37, "applicant_id": 84, "domain": "UI/UX Design", "start_date": "2025-02-07", "completion_status": "Dropped Out"}, {"intern_id": 38, "applicant_id": 86, "domain": "UI/UX Design", "start_date": "2025-03-01", "completion_status": "Completed"}, {"intern_id": 39, "applicant_id": 88, "domain": "UI/UX Design", "start_date": "2025-06-07", "completion_status": "Completed"}, {"intern_id": 40, "applicant_id": 93, "domain": "Digital Marketing", "start_date": "2025-05-04", "completion_status": "Completed"}, {"intern_id": 41, "applicant_id": 95, "domain": "Digital Marketing", "start_date": "2025-05-24", "completion_status": "Completed"}, {"intern_id": 42, "applicant_id": 98, "domain": "Digital Marketing", "start_date": "2025-03-03", "completion_status": "Completed"}, {"intern_id": 43, "applicant_id": 100, "domain": "Digital Marketing", "start_date": "2025-08-04", "completion_status": "Completed"}, {"intern_id": 44, "applicant_id": 102, "domain": "Digital Marketing", "start_date": "2025-06-12", "completion_status": "Completed"}, {"intern_id": 45, "applicant_id": 104, "domain": "Digital Marketing", "start_date": "2025-06-26", "completion_status": "Completed"}, {"intern_id": 46, "applicant_id": 107, "domain": "Digital Marketing", "start_date": "2025-07-04", "completion_status": "Completed"}, {"intern_id": 47, "applicant_id": 109, "domain": "Digital Marketing", "start_date": "2025-04-04", "completion_status": "Completed"}, {"intern_id": 48, "applicant_id": 110, "domain": "Digital Marketing", "start_date": "2025-04-06", "completion_status": "Completed"}, {"intern_id": 49, "applicant_id": 112, "domain": "Digital Marketing", "start_date": "2025-05-23", "completion_status": "Completed"}, {"intern_id": 50, "applicant_id": 113, "domain": "Digital Marketing", "start_date": "2025-02-05", "completion_status": "Dropped Out"}, {"intern_id": 51, "applicant_id": 115, "domain": "Digital Marketing", "start_date": "2025-06-05", "completion_status": "Completed"}, {"intern_id": 52, "applicant_id": 121, "domain": "Digital Marketing", "start_date": "2025-06-17", "completion_status": "Completed"}, {"intern_id": 53, "applicant_id": 123, "domain": "Digital Marketing", "start_date": "2025-03-26", "completion_status": "Completed"}, {"intern_id": 54, "applicant_id": 126, "domain": "Digital Marketing", "start_date": "2025-04-10", "completion_status": "Completed"}, {"intern_id": 55, "applicant_id": 128, "domain": "Digital Marketing", "start_date": "2025-01-31", "completion_status": "Completed"}, {"intern_id": 56, "applicant_id": 129, "domain": "AI/ML", "start_date": "2025-02-01", "completion_status": "Dropped Out"}, {"intern_id": 57, "applicant_id": 133, "domain": "AI/ML", "start_date": "2025-02-10", "completion_status": "Completed"}, {"intern_id": 58, "applicant_id": 136, "domain": "AI/ML", "start_date": "2025-05-08", "completion_status": "Completed"}, {"intern_id": 59, "applicant_id": 139, "domain": "AI/ML", "start_date": "2025-07-08", "completion_status": "Completed"}, {"intern_id": 60, "applicant_id": 148, "domain": "AI/ML", "start_date": "2025-03-17", "completion_status": "Completed"}, {"intern_id": 61, "applicant_id": 149, "domain": "AI/ML", "start_date": "2025-07-19", "completion_status": "Completed"}, {"intern_id": 62, "applicant_id": 152, "domain": "AI/ML", "start_date": "2025-04-23", "completion_status": "Completed"}, {"intern_id": 63, "applicant_id": 153, "domain": "AI/ML", "start_date": "2025-03-23", "completion_status": "Completed"}, {"intern_id": 64, "applicant_id": 159, "domain": "AI/ML", "start_date": "2025-04-05", "completion_status": "Dropped Out"}, {"intern_id": 65, "applicant_id": 160, "domain": "AI/ML", "start_date": "2025-01-20", "completion_status": "Dropped Out"}], "scores": [{"intern_id": 1, "score": 88.7, "domain": "Data Analytics"}, {"intern_id": 2, "score": 71.7, "domain": "Data Analytics"}, {"intern_id": 3, "score": 55.3, "domain": "Data Analytics"}, {"intern_id": 4, "score": 70.5, "domain": "Data Analytics"}, {"intern_id": 5, "score": 88.2, "domain": "Data Analytics"}, {"intern_id": 6, "score": 92.6, "domain": "Data Analytics"}, {"intern_id": 7, "score": 97.0, "domain": "Data Analytics"}, {"intern_id": 9, "score": 73.4, "domain": "Data Analytics"}, {"intern_id": 10, "score": 87.9, "domain": "Data Analytics"}, {"intern_id": 11, "score": 79.0, "domain": "Data Analytics"}, {"intern_id": 12, "score": 81.5, "domain": "Data Analytics"}, {"intern_id": 13, "score": 64.7, "domain": "Web Development"}, {"intern_id": 14, "score": 64.7, "domain": "Web Development"}, {"intern_id": 15, "score": 74.2, "domain": "Web Development"}, {"intern_id": 16, "score": 56.3, "domain": "Web Development"}, {"intern_id": 17, "score": 69.8, "domain": "Web Development"}, {"intern_id": 18, "score": 84.9, "domain": "Web Development"}, {"intern_id": 19, "score": 72.8, "domain": "Web Development"}, {"intern_id": 20, "score": 62.3, "domain": "Web Development"}, {"intern_id": 21, "score": 75.6, "domain": "Web Development"}, {"intern_id": 22, "score": 60.6, "domain": "Web Development"}, {"intern_id": 23, "score": 82.4, "domain": "Web Development"}, {"intern_id": 24, "score": 56.2, "domain": "Web Development"}, {"intern_id": 25, "score": 72.3, "domain": "Web Development"}, {"intern_id": 26, "score": 79.8, "domain": "Web Development"}, {"intern_id": 28, "score": 56.2, "domain": "UI/UX Design"}, {"intern_id": 30, "score": 83.3, "domain": "UI/UX Design"}, {"intern_id": 33, "score": 61.0, "domain": "UI/UX Design"}, {"intern_id": 34, "score": 75.3, "domain": "UI/UX Design"}, {"intern_id": 35, "score": 57.2, "domain": "UI/UX Design"}, {"intern_id": 36, "score": 71.7, "domain": "UI/UX Design"}, {"intern_id": 38, "score": 64.3, "domain": "UI/UX Design"}, {"intern_id": 39, "score": 69.4, "domain": "UI/UX Design"}, {"intern_id": 40, "score": 88.5, "domain": "Digital Marketing"}, {"intern_id": 41, "score": 71.7, "domain": "Digital Marketing"}, {"intern_id": 42, "score": 88.1, "domain": "Digital Marketing"}, {"intern_id": 43, "score": 91.6, "domain": "Digital Marketing"}, {"intern_id": 44, "score": 66.1, "domain": "Digital Marketing"}, {"intern_id": 45, "score": 58.6, "domain": "Digital Marketing"}, {"intern_id": 46, "score": 55.9, "domain": "Digital Marketing"}, {"intern_id": 47, "score": 78.7, "domain": "Digital Marketing"}, {"intern_id": 48, "score": 99.0, "domain": "Digital Marketing"}, {"intern_id": 49, "score": 70.4, "domain": "Digital Marketing"}, {"intern_id": 51, "score": 83.6, "domain": "Digital Marketing"}, {"intern_id": 52, "score": 89.4, "domain": "Digital Marketing"}, {"intern_id": 53, "score": 83.7, "domain": "Digital Marketing"}, {"intern_id": 54, "score": 88.2, "domain": "Digital Marketing"}, {"intern_id": 55, "score": 96.8, "domain": "Digital Marketing"}, {"intern_id": 57, "score": 63.8, "domain": "AI/ML"}, {"intern_id": 58, "score": 55.9, "domain": "AI/ML"}, {"intern_id": 59, "score": 61.7, "domain": "AI/ML"}, {"intern_id": 60, "score": 60.6, "domain": "AI/ML"}, {"intern_id": 61, "score": 84.5, "domain": "AI/ML"}, {"intern_id": 62, "score": 79.8, "domain": "AI/ML"}, {"intern_id": 63, "score": 64.6, "domain": "AI/ML"}]};
+
+const { applicants, interns, scores } = DATA;
+
+const domains = ["All", ...new Set(applicants.map(a => a.domain))].sort((a,b)=> a==="All"?-1:b==="All"?1:a.localeCompare(b));
+const domainSelect = document.getElementById('domainFilter');
+domains.forEach(d => {
+  const opt = document.createElement('option');
+  opt.value = d; opt.textContent = d;
+  domainSelect.appendChild(opt);
+});
+
+let conversionChart, scoreChart;
+
+function computeConversion(domainFilter){
+  const doms = domainFilter === "All" ? [...new Set(applicants.map(a=>a.domain))] : [domainFilter];
+  return doms.map(dom => {
+    const domApplicants = applicants.filter(a => a.domain === dom);
+    const completedIds = new Set(
+      interns.filter(i => i.domain === dom && i.completion_status === "Completed").map(i => i.applicant_id)
+    );
+    const total = domApplicants.length;
+    const completed = domApplicants.filter(a => completedIds.has(a.applicant_id)).length;
+    const rate = total ? +(100 * completed / total).toFixed(2) : 0;
+    return { domain: dom, rate };
+  }).sort((a,b)=> b.rate - a.rate);
+}
+
+function computeAvgScore(domainFilter){
+  const doms = domainFilter === "All" ? [...new Set(scores.map(s=>s.domain))] : [domainFilter];
+  return doms.map(dom => {
+    const domScores = scores.filter(s => s.domain === dom);
+    const avg = domScores.length ? +(domScores.reduce((a,s)=>a+s.score,0) / domScores.length).toFixed(2) : 0;
+    return { domain: dom, avg };
+  }).sort((a,b)=> b.avg - a.avg);
+}
+
+function computeLeaderboard(domainFilter){
+  const internMap = new Map(interns.map(i => [i.intern_id, i]));
+  let rows = scores.map(s => {
+    const intern = internMap.get(s.intern_id);
+    return { intern_id: s.intern_id, domain: s.domain, score: s.score };
+  });
+  if (domainFilter !== "All") rows = rows.filter(r => r.domain === domainFilter);
+  return rows.sort((a,b)=> b.score - a.score).slice(0,10);
+}
+
+function render(domainFilter){
+  const domApplicants = domainFilter === "All" ? applicants : applicants.filter(a=>a.domain===domainFilter);
+  const domInterns = domainFilter === "All" ? interns : interns.filter(i=>i.domain===domainFilter);
+  const completedInterns = domInterns.filter(i => i.completion_status === "Completed");
+
+  document.getElementById('fApplicants').textContent = domApplicants.length;
+  document.getElementById('fInterns').textContent = domInterns.length;
+  document.getElementById('fCompleted').textContent = completedInterns.length;
+
+  const conv = computeConversion(domainFilter);
+  const avgScores = computeAvgScore(domainFilter);
+  const leaderboard = computeLeaderboard(domainFilter);
+
+  const ctxColors = { grid: '#dedad0', text: '#6b6558' };
+
+  if (conversionChart) conversionChart.destroy();
+  conversionChart = new Chart(document.getElementById('conversionChart'), {
+    type: 'bar',
+    data: {
+      labels: conv.map(c => c.domain),
+      datasets: [{
+        data: conv.map(c => c.rate),
+        backgroundColor: '#2f6f5e',
+        borderRadius: 3,
+        maxBarThickness: 42
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: (c)=> c.parsed.y + '%'} } },
+      scales:{
+        y:{ beginAtZero:true, ticks:{ callback:(v)=>v+'%', color: ctxColors.text }, grid:{ color: ctxColors.grid } },
+        x:{ ticks:{ color: ctxColors.text, font:{size:11} }, grid:{ display:false } }
+      }
+    }
+  });
+
+  if (scoreChart) scoreChart.destroy();
+  scoreChart = new Chart(document.getElementById('scoreChart'), {
+    type: 'bar',
+    data: {
+      labels: avgScores.map(s => s.domain),
+      datasets: [{
+        data: avgScores.map(s => s.avg),
+        backgroundColor: '#c07a2c',
+        borderRadius: 3,
+        maxBarThickness: 42
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        y:{ beginAtZero:true, suggestedMax:100, ticks:{ color: ctxColors.text }, grid:{ color: ctxColors.grid } },
+        x:{ ticks:{ color: ctxColors.text, font:{size:11} }, grid:{ display:false } }
+      }
+    }
+  });
+
+  const tbody = document.getElementById('leaderboardBody');
+  const emptyNote = document.getElementById('emptyNote');
+  tbody.innerHTML = '';
+  if (leaderboard.length === 0){
+    emptyNote.style.display = 'block';
+  } else {
+    emptyNote.style.display = 'none';
+    leaderboard.forEach((row, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="rank">${idx+1}</td>
+        <td>#${row.intern_id}</td>
+        <td><span class="domain-tag">${row.domain}</span></td>
+        <td class="score-cell">${row.score.toFixed(1)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+}
+
+domainSelect.addEventListener('change', (e) => render(e.target.value));
+render("All");
+</script>
+
+</body>
+</html>

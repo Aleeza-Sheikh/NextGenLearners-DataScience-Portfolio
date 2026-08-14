@@ -41,6 +41,3 @@ Applicants still marked `Under Review` (27 of the 72) were excluded from model t
 2. Make sure `applicants_with_features.csv` is in the same folder (or update the file path in the first code cell).
 3. Run all cells top to bottom (`Runtime → Run all` in Colab, or `Kernel → Restart & Run All` in Jupyter).
 
-## Walkthrough Video
-
-[Link to your 2–3 minute recorded walkthrough here]

@@ -37,7 +37,7 @@ Applicants still marked `Under Review` (27 of the 72) were excluded from model t
 
 ## How to Run
 
-1. Open `Week4_Capstone_YourName.ipynb` in Jupyter Notebook or Google Colab.
+1. Open `Week4_Capstone_Aleeza.ipynb` in Jupyter Notebook or Google Colab.
 2. Make sure `applicants_with_features.csv` is in the same folder (or update the file path in the first code cell).
-3. Run all cells top to bottom (`Runtime → Run all` in Colab, or `Kernel → Restart & Run All` in Jupyter).
+3. Run all cells from top to bottom (`Runtime → Run all` in Colab, or `Kernel → Restart & Run All` in Jupyter).
 
